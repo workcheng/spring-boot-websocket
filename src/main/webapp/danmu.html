@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>弹幕</title>
+    <link rel="stylesheet" type="text/css" href="/css/test.css">
+    <script src="/js/sockjs-0.3.min.js" type="text/javascript"></script>
+    <script type="text/javascript" src="/js/jquery-1.11.0.min.js"></script>
+    <script type="text/javascript" src="/js/jquery.barrager.js"></script>
+    <script>
+    $(function() {
+    	var sock = new SockJS('/sockjs/chat');
+    	sock.onopen = function() {
+    		console.log('Open');
+    		document.getElementById("content").innerHTML += '弹幕通道已开启! Welcome!<br />';
+    	};
+    	sock.onmessage = function(event) {
+    		var data = $.parseJSON(event.data);
+    		if (data.type == 'message') {
+    			var text = $('#dContent').html();
+    			if (event && event.data) {
+                    // var contentMessage = $.parseJSON(event.data);
+                    var array = [];
+                    var content = {
+                        msg: data.value,
+                        img: ''
+                    };
+                    array.push(content);
+                    $('canvas').barrager(array);
+                }
+    			$('#dContent').html(text + data.value + '<br>');
+    		} else if (data.type == 'users') {
+    			$('#dUsers').html(data.value);
+    		}
+    	};
+    	sock.onclose = function() {
+    		console.log('Close');
+    		sock = null;
+    	};
+
+    	//发送
+    	$('#btnSend').click(function() {
+    		var text = $('#txtMessage').val();
+    		if (text.length == 0) {
+    			alert('不能发送空内容');
+    			return;
+    		}
+    		if (sock == null) {
+    			sock = new SockJS('/sockjs/chat');
+    		}
+    		sock.send(text);
+    	});
+    });
+</script>
+    <script type="application/javascript">
+        $(document).ready(function () {
+            var ws = null;
+
+            $("#exit").click(function () {
+                $("#content").html("");
+                $("canvas").barrager("clear");
+                if (null != ws) {
+                    ws.close();
+                    ws = null;
+                }
+                $("#start").show();
+                $(this).hide();
+            });
+
+            $("#start").click(function () {
+                $("#content").html("");
+                if (null == ws) {
+                    startServer();
+                }
+                $("#exit").show();
+                $(this).hide();
+            });
+
+            //获取url参数
+            function startServer() {
+                var url = "ws://" + BASE + "echoServlet";
+                if ('WebSocket' in window) {
+                    ws = new WebSocket(url);
+                } else if ('MozWebSocket' in window) {
+                    ws = new MozWebSocket(url);
+                } else {
+                    alert('Your browser Unsupported WebSocket!');
+                    return;
+                }
+                ws.onopen = function () {
+                    document.getElementById("content").innerHTML += '弹幕通道已开启! Welcome!<br />';
+                };
+                ws.onmessage = function (event) {
+                    if (event && event.data) {
+                        var contentMessage = $.parseJSON(event.data);
+                        var array = [];
+                        var content = {
+                            msg: contentMessage.content,
+                            img: contentMessage.headImgUrl
+                        };
+                        array.push(content);
+                        $('canvas').barrager(array);
+                    }
+                };
+                ws.onclose = function () {
+                    document.getElementById("content").innerHTML += '弹幕通道关闭! Byebye!<br />';
+                };
+            }
+        });
+    </script>
+</head>
+<body>
+<div>
+
+    <h1 id="content" style="text-align: center;color:#3498ed"></h1>
+    <button id="exit" style="position: absolute;top: 0;right: 0;z-index: 1000;background-color: transparent;display: none">关闭弹幕通道
+    </button>
+    <button id="start"
+            style="position: absolute;z-index: 1000;top:0;right:100px;background-color: transparent;">
+        开启弹幕通道
+    </button>
+    <canvas style="width: 100%;height: 100%;background-color: rgba(0,0,0,0.2);position: absolute;top: 0;left: 0">
+        你的浏览器不支持canvas
+    </canvas>
+</div>
+</body>
+</html>
